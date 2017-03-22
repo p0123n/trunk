@@ -1,9 +1,9 @@
 -- Shamelessly adapted from queue_classic
 
-DROP FUNCTION IF EXISTS pop_lock(name varchar);
-DROP FUNCTION IF EXISTS pop_lock(name varchar, boundary integer);
+DROP FUNCTION IF EXISTS public.pop_lock(name varchar);
+DROP FUNCTION IF EXISTS public.pop_lock(name varchar, boundary integer);
 
-CREATE OR REPLACE FUNCTION pop_lock(name varchar, boundary integer)
+CREATE OR REPLACE FUNCTION public.pop_lock(name varchar, boundary integer)
 RETURNS SETOF trunk_queue AS $$
 DECLARE
   unlocked bigint;
@@ -15,7 +15,7 @@ BEGIN
   -- for more workers. Would love to see some optimization here...
 
   EXECUTE 'SELECT count(*) FROM '
-    || '(SELECT * FROM trunk_queue WHERE name = '
+    || '(SELECT * FROM public.trunk_queue WHERE name = '
     || quote_literal(name)
     || ' AND locked_at IS NULL'
     || ' LIMIT '
@@ -32,7 +32,7 @@ BEGIN
 
   LOOP
     BEGIN
-      EXECUTE 'SELECT id FROM trunk_queue '
+      EXECUTE 'SELECT id FROM public.trunk_queue '
         || ' WHERE locked_at IS NULL'
         || ' AND name = '
         || quote_literal(name)
@@ -48,7 +48,7 @@ BEGIN
     END;
   END LOOP;
 
-  RETURN QUERY EXECUTE 'UPDATE trunk_queue '
+  RETURN QUERY EXECUTE 'UPDATE public.trunk_queue '
     || ' SET locked_at = (CURRENT_TIMESTAMP)'
     || ' WHERE id = $1'
     || ' AND locked_at is NULL'
@@ -59,9 +59,9 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE OR REPLACE FUNCTION pop_lock(name varchar)
+CREATE OR REPLACE FUNCTION public.pop_lock(name varchar)
 RETURNS SETOF trunk_queue AS $$
 BEGIN
-RETURN QUERY EXECUTE 'SELECT * FROM pop_lock($1,10)' USING name;
+RETURN QUERY EXECUTE 'SELECT * FROM public.pop_lock($1,10)' USING name;
 END;
 $$ LANGUAGE plpgsql;

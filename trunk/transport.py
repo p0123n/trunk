@@ -4,7 +4,13 @@ from anyjson import loads, dumps
 from kombu.transport import virtual
 
 from trunk.queue import PGQueue
-from trunk.utils import build_dsn
+from trunk.utils import build_dsn, retry
+
+import logging
+
+log_fmt = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+logging.basicConfig(format=log_fmt, level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 
 class Channel(virtual.Channel):
@@ -17,17 +23,18 @@ class Channel(virtual.Channel):
         self.queue = PGQueue(dsn)
 
     def _new_queue(self, queue, **kwargs):
-        self.queue.create(queue)
+        retry(lambda: self.queue.create(queue), onerror=logger.warning)
 
     def _get(self, queue, timeout=None):
         _, message = self.queue.get_nowait(queue)
         return loads(message)
 
     def _put(self, queue, message, **kwargs):
-        self.queue.put(queue, dumps(message))
+        retry(lambda: self.queue.put(queue, dumps(message)),
+              onerror=logger.warning)
 
     def _purge(self, queue):
-        return self.queue.purge(queue)
+        return retry(lambda: self.queue.purge(queue), onerror=logger.warning)
 
     def close(self):
         super(Channel, self).close()
@@ -41,5 +48,6 @@ class Transport(virtual.Transport):
 
     driver_type = 'postgres'
     driver_name = 'postgres'
+
 
 transport = Transport  # hack to get kombu to load the class
