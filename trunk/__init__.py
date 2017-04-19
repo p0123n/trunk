@@ -8,6 +8,15 @@ from contextlib import contextmanager
 import logging
 from datetime import datetime
 from trunk.utils import retry
+import sys
+
+import time
+
+if sys.version_info[0] == 2:
+    perf_counter = time.clock
+else:
+    perf_counter = time.perf_counter
+
 
 try:
     from Queue import Empty
@@ -24,29 +33,26 @@ class LoggingCursor(psycopg2.extensions.cursor):
     """A cursor that logs queries using its connection logging facilities."""
 
     def execute(self, query, vars=None):
-        import time
-
         ts = datetime.now()
         duration = 0
         begin_tran = False  # detect implicit transaction start
         try:
             old_tran_status = self.connection.get_transaction_status()
-            start = time.perf_counter()
+            start = perf_counter()
             res = super(LoggingCursor, self).execute(query, vars)
-            duration = (time.perf_counter() - start) * 1000  # ms
+            duration = (perf_counter() - start) * 1000  # ms
             begin_tran = old_tran_status == 0 \
                          and self.connection.get_transaction_status() != 0
             return res
         finally:
             if begin_tran:
-                _log_fmt = "--{:%Y-%m-%d %H:%M:%S.%f}:\nBEGIN;".format(ts)
+                _log_fmt = "--%s:\nBEGIN;" % str(ts)
                 self.connection.log(_log_fmt, self)
 
             query_str = self.query.decode() \
                 if isinstance(self.query, bytes) \
                 else self.query
-            _log_fmt = "--{:%Y-%m-%d %H:%M:%S.%f}: {}\n{};".format(ts, duration,
-                                                                   query_str)
+            _log_fmt = "--%s: %s\n%s;" % (str(ts), duration, query_str)
             self.connection.log(_log_fmt, self)
 
 
@@ -67,16 +73,14 @@ class LoggingConnection(psycopg2.extras.LoggingConnection):
         do_log = self.get_transaction_status()
         super(LoggingConnection, self).commit()
         if do_log:
-            now = datetime.now()
-            _log_fmt = "--{:%Y-%m-%d %H:%M:%S.%f}:\nCOMMIT;".format(now)
+            _log_fmt = "--%s:\nCOMMIT;" % str(datetime.now())
             self.log(_log_fmt, None)
 
     def rollback(self):
         do_log = self.get_transaction_status()
         super(LoggingConnection, self).rollback()
         if do_log:
-            now = datetime.now()
-            _log_fmt = "--{:%Y-%m-%d %H:%M:%S.%f}:\nROLLBACK;".format(now)
+            _log_fmt = "--%s:\nROLLBACK;" % str(datetime.now())
             self.log(_log_fmt, None)
 
 
