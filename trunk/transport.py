@@ -1,4 +1,6 @@
 # -*- coding: utf-8  -*-
+from anyjson import loads, dumps
+
 from kombu.transport import virtual
 
 from trunk.queue import PGQueue
@@ -25,10 +27,10 @@ class Channel(virtual.Channel):
 
     def _get(self, queue, timeout=None):
         _, message = self.queue.get_nowait(queue)
-        return message
+        return loads(message)
 
     def _put(self, queue, message, **kwargs):
-        retry(lambda: self.queue.put(queue, message),
+        retry(lambda: self.queue.put(queue, dumps(message)),
               onerror=logger.warning)
 
     def _purge(self, queue):
