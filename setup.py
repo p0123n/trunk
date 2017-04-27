@@ -17,7 +17,7 @@ setup(
     packages=find_packages(),
     zip_safe=False,
     install_requires=[
-        'psycopg2>=2.5.4',
+        'psycopg2>=2.4.2',
     ],
     include_package_data=True,
     classifiers=[

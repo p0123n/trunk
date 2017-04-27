@@ -1,5 +1,4 @@
 # -*- coding: utf-8  -*-
-from psycopg2.extras import Json
 try:
     from Queue import Empty, Full
 except ImportError:
@@ -32,7 +31,7 @@ class PGQueue(object):
 
     def put(self, name, message):
         with self.trunk.cursor() as cursor:
-            cursor.execute("INSERT INTO public.trunk_queue (name, message) VALUES (%s, %s)", (name, Json(message)))
+            cursor.execute("INSERT INTO public.trunk_queue (name, message) VALUES (%s, %s)", (name, message))
         self.trunk.notify(name)
 
     def empty(self, name):

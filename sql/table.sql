@@ -1,7 +1,7 @@
 CREATE TABLE public.trunk_queue (
     id bigserial PRIMARY KEY,
     name varchar(255),
-    message jsonb,
+    message text,
     locked_at timestamptz
 );
 
